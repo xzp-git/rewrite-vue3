@@ -1,20 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
-</head>
-<body>
-    <script  src="./reactivity.global.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="./reactivity.global.js"></script>
     <script>
-        const {reactive} = VueReactivity
-        let target = {name:'xzp', age:'25'}
-        let proxy = reactive(target)
+      const { reactive, effect, computed } = VueReactivity;
+      let target = {
+        name: "xzp",
+        age: 25,
+        firstName: "xxx",
+        lastname: "ppppp",
+      };
+      let proxy = reactive(target);
+      let fullname = computed(() => proxy.firstName + proxy.lastname);
+      effect(() => {
+        app.innerHTML = fullname.value;
+      });
+      console.log(fullname.value);
+      console.log(fullname.value);
 
-        proxy.name
-        proxy.age = 20
+      setTimeout(() => {
+        proxy.firstName = "uuuuuuuuuuuuuu";
+        // proxy.age = 20;
+      }, 3000);
     </script>
-</body>
+  </body>
 </html>
