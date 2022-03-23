@@ -24,8 +24,6 @@ class ComputedRefImpl {
     //做依赖收集
     trackEffects(this.dep);
     if (this._dirty) {
-      console.log("run");
-
       // 说明这个值是脏的
       this._dirty = false;
       this._value = this.effect.run();
@@ -44,9 +42,7 @@ export const computed = (getterOrOptions) => {
 
   if (onlyGetter) {
     getter = getterOrOptions;
-    setter = () => {
-      console.warn("no set");
-    };
+    setter = () => {};
   } else {
     getter = getterOrOptions.get;
     setter = getterOrOptions.set;

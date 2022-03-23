@@ -126,7 +126,6 @@ var VueReactivity = (() => {
     get value() {
       trackEffects(this.dep);
       if (this._dirty) {
-        console.log("run");
         this._dirty = false;
         this._value = this.effect.run();
       }
