@@ -1,5 +1,14 @@
 export let activeEffect = undefined;
 
+function cleanupEffect(effect) {
+  const { deps } = effect;
+
+  for (let i = 0; i < deps.length; i++) {
+    deps[i].delete(effect);
+  }
+  effect.deps.length = 0;
+}
+
 export class ReactiveEffect {
   public parent;
   public deps = [];
@@ -20,11 +29,19 @@ export class ReactiveEffect {
       //记录父级的effect // 多层effect嵌套 防止effecct丢失
       this.parent = activeEffect;
       activeEffect = this;
+      //这里我们需要在执行用户函数之前将之前的内容清空
 
+      cleanupEffect(this);
       //当稍后调用取值操作的时候，就可以获取到这个全局的activeEffect了
       return this.fn();
     } finally {
       activeEffect = this.parent;
+    }
+  }
+  stop() {
+    if (this.active) {
+      this.active = false;
+      cleanupEffect(this); //停止effect的收集 清空属性的依赖列表
     }
   }
 }
