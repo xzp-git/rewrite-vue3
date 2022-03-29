@@ -83,7 +83,153 @@ export function createRenderer(renderOptions) {
     }
   };
 
-  const patchChildren = (n1, n2, el) => {};
+  const unmountChildren = (children) => {
+    for(let i = 0; i < children.length; i++){
+      unmount(children[i])
+    }
+  }
+  //比较两个儿子的差异
+  const patchKeyChildren = (c1, c2, el) => { 
+    let i = 0
+    let e1 = c1.length - 1
+    let e2 = c2.length - 1
+
+    //sync from start
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i]
+      const n2 = c2[i]
+      if (isSameVnode(n1, n2)) {
+        patch(n1, n2, el) //这样做就是比较两个节点的属性和子节点
+      }else{
+        break
+      }
+      i++
+    }
+
+    //sync from end
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1]
+      const n2 = c2[e2]
+      if (isSameVnode(n1, n2)) {
+        patch(n1, n2, el)
+      }else{
+        break
+      }
+      e1--
+      e2--
+    }
+
+    //common sequence + mount
+    //i要比e1大说明有新增的
+    //i 和 e2 之间是新增的部分
+
+    //有一方全部比较完毕了，要么就删除，要么就添加
+    if (i > e1) {
+      if (i <= e2) {
+        while (i <= e2) {
+          const nextPos = e2 + 1
+          //根据下一个人的索引来看参照物
+          const anchor = nextPos < c2.length ? c2[nextPos].el : null
+          patch(null, c2[i], el, anchor)
+          i++
+        }
+      }
+    // common sequence + unmount
+    // i比e2大说明有要卸载的
+    // i到e1之间的就是要卸载的
+    }else if (i > e2) {
+      if (i <= e1) {
+        while ( i <= e1) {
+          unmount(c1[i])
+          i++
+        }
+      }
+    }
+
+    /**
+     * 乱序对比
+     */
+
+    let s1 = i
+    let s2 = i
+    const keyToNewIndexMap = new Map()
+    for(let i = s2; i < e2; i++){
+      keyToNewIndexMap.set(c2[i].key, i) //记录新的虚拟节点 key 与索引的映射关系
+    }
+
+    //循环老的元素 看一下新的里面有没有 如果有说明要比较差异，没有要添加到列表中，老的有新的没有要删除
+    
+    const toBePatched = e2 - s2 + 1 //记录一下新的总数
+
+    //记录是否比对过的映射表
+    const newIndexToOldIndexMap = new Array(toBePatched).fill(0)
+
+    for(let i = s1; i <= e1; i++){
+      const oldChild = c1[i] //老的孩子
+      // 用老的孩子去新的里面找
+      let newIndex = keyToNewIndexMap.get(oldChild.key)
+
+      if (newIndex === undefined) {
+        unmount(oldChild)
+      }else{
+        //新的位置对应的老的位置，如果数组里放的值> 0 说明已经patch过了
+        newIndexToOldIndexMap[newIndex-s2] = i+1
+        patch(oldChild, c2[newIndex],el)
+      }
+    }
+    //到了这一步是新老属性和儿子的对比，没有移动位置
+
+    //需要移动位置
+    for(let i = toBePatched - 1; i >= 0; i--){
+      let index = i + s2 
+      let current = c2[index] //找到对应的虚拟节点
+      let anchor = index + 1 < c2.length ? c2[index + 1].el : null
+      // if (newIndexToOldIndexMap[i] === 0) {
+      if (!current.el) {
+
+        patch(null, current, el, anchor)
+      }else{
+        hostInsert(current.el, el, anchor)
+      }
+    }
+  }
+
+  const patchChildren = (n1, n2, el) => {
+    //比较两个虚拟节点的儿子的差异， el就是当前的父节点
+    const c1 = n1.children
+    const c2 = n2.children
+    const prevShapeFlag = n1.shapeFlag //之前的
+    const shapeFlag = n2.shapeFlag//之后的
+    //文本 空的null 数组
+
+
+    //比较两个儿子列表的差异
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        unmountChildren(c1)
+      }
+      if (c1 !== c2) {
+        hostSetElementText(el,c2)
+      }
+    }else{
+
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          patchKeyChildren(c1, c2, el)  //diff算法 全量比对
+        }else{
+          unmountChildren(c1)
+        }
+      }else{
+        if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+          hostSetElementText(el, '')
+        }
+        if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          mountChildren(c2,el)
+        }
+      }
+    }
+
+  };
 
   /**
    * 走到这一步代表两个节点是相同的，因为在patch中已经进行过判断了
@@ -148,6 +294,8 @@ export function createRenderer(renderOptions) {
       //这里既有初始化的逻辑，又有更新的逻辑
       patch(container._vnode || null, vnode, container);
     }
+    container._vnode = vnode
+
   };
 
   return {
