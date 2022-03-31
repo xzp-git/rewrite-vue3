@@ -1,3 +1,5 @@
-export {computed} from './computed'
-export {effect} from './effect'
-export {reactive} from './reactivity'
+export { computed } from "./computed";
+export { reactive } from "./reactivity";
+export { watch } from "./watch";
+export * from "./ref";
+export * from "./effect";
