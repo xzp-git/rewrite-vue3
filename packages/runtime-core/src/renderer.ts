@@ -1,4 +1,6 @@
+import { reactive, ReactiveEffect } from "@vue/reactivity";
 import { isString, ShapeFlags } from "@vue/shared";
+import { queueJob } from "./scheduler";
 import { Text, createVnode, isSameVnode, Fragment } from "./vnode";
 
 export function createRenderer(renderOptions) {
@@ -259,6 +261,35 @@ export function createRenderer(renderOptions) {
 
   const mountComponent = (vnode, container, anchor) => {
     let { data = () => ({}), render } = vnode.type;
+    const state = reactive(data())
+
+    const instance = { //组件的实例
+      state,
+      vnode,
+      subTree:null, //vnode组件的虚拟节点， subTree渲染的组件内容
+      isMounted:false,
+      update:null
+    }
+
+    const componentUpdateFn = () => { //区分是初始化 还是更新
+      if (!instance.isMounted) { //初始化
+        const subTree = render.call(state) //作为this 后续this 会改
+        patch(null, subTree, container, anchor)//创造了subTree的真实节点并且插入了
+        instance.subTree = subTree
+        instance.isMounted = true
+      }else{ //组件内部更新
+        const subTree = render.call(state)
+        patch(instance.subTree, subTree, container, anchor)
+        instance.subTree = subTree
+      }   
+    }
+
+    //组件的异步更新
+    const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(instance.update))
+    //我们将组件强制更新的逻辑保存到了组件的实例上，后续可以使用
+    //调用effect.run可以让组件强制重新渲染
+    let update = instance.update = effect.run.bind(effect)
+    update()
   };
 
   //统一处理组件，里面在区分是普通的还是 函数式组件
