@@ -1,5 +1,6 @@
 import { reactive, ReactiveEffect } from "@vue/reactivity";
 import { isString, ShapeFlags } from "@vue/shared";
+import { getSequence } from "./getSequence";
 import { queueJob } from "./scheduler";
 import { Text, createVnode, isSameVnode, Fragment } from "./vnode";
 
@@ -181,16 +182,23 @@ export function createRenderer(renderOptions) {
     }
     //到了这一步是新老属性和儿子的对比，没有移动位置
 
+    //获取最长递增子序列
+    let increment = getSequence(newIndexToOldIndexMap);
+
     //需要移动位置
+    let j = increment.length - 1;
     for (let i = toBePatched - 1; i >= 0; i--) {
       let index = i + s2;
       let current = c2[index]; //找到对应的虚拟节点
       let anchor = index + 1 < c2.length ? c2[index + 1].el : null;
-      // if (newIndexToOldIndexMap[i] === 0) {
-      if (!current.el) {
+      if (newIndexToOldIndexMap[i] === 0) {
         patch(null, current, el, anchor);
       } else {
-        hostInsert(current.el, el, anchor);
+        if (increment[j] != i) {
+          hostInsert(current.el, el, anchor);
+        } else {
+          j--;
+        }
       }
     }
   };
@@ -261,35 +269,41 @@ export function createRenderer(renderOptions) {
 
   const mountComponent = (vnode, container, anchor) => {
     let { data = () => ({}), render } = vnode.type;
-    const state = reactive(data())
+    const state = reactive(data());
 
-    const instance = { //组件的实例
+    const instance = {
+      //组件的实例
       state,
       vnode,
-      subTree:null, //vnode组件的虚拟节点， subTree渲染的组件内容
-      isMounted:false,
-      update:null
-    }
+      subTree: null, //vnode组件的虚拟节点， subTree渲染的组件内容
+      isMounted: false,
+      update: null,
+    };
 
-    const componentUpdateFn = () => { //区分是初始化 还是更新
-      if (!instance.isMounted) { //初始化
-        const subTree = render.call(state) //作为this 后续this 会改
-        patch(null, subTree, container, anchor)//创造了subTree的真实节点并且插入了
-        instance.subTree = subTree
-        instance.isMounted = true
-      }else{ //组件内部更新
-        const subTree = render.call(state)
-        patch(instance.subTree, subTree, container, anchor)
-        instance.subTree = subTree
-      }   
-    }
+    const componentUpdateFn = () => {
+      //区分是初始化 还是更新
+      if (!instance.isMounted) {
+        //初始化
+        const subTree = render.call(state); //作为this 后续this 会改
+        patch(null, subTree, container, anchor); //创造了subTree的真实节点并且插入了
+        instance.subTree = subTree;
+        instance.isMounted = true;
+      } else {
+        //组件内部更新
+        const subTree = render.call(state);
+        patch(instance.subTree, subTree, container, anchor);
+        instance.subTree = subTree;
+      }
+    };
 
     //组件的异步更新
-    const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(instance.update))
+    const effect = new ReactiveEffect(componentUpdateFn, () =>
+      queueJob(instance.update)
+    );
     //我们将组件强制更新的逻辑保存到了组件的实例上，后续可以使用
     //调用effect.run可以让组件强制重新渲染
-    let update = instance.update = effect.run.bind(effect)
-    update()
+    let update = (instance.update = effect.run.bind(effect));
+    update();
   };
 
   //统一处理组件，里面在区分是普通的还是 函数式组件
