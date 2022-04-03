@@ -14,6 +14,9 @@ export const isFunction = (value) => {
 export const isArray = Array.isArray;
 export const assign = Object.assign;
 
+const hasOwnProperty = Object.prototype.hasOwnProperty
+export const hasOwn = (value,key)=>hasOwnProperty.call(value,key)
+
 export const enum ShapeFlags { // vue3提供的形状标识
   ELEMENT = 1,
   FUNCTIONAL_COMPONENT = 1 << 1,

@@ -1,7 +1,10 @@
 import { reactive, ReactiveEffect } from "@vue/reactivity";
 import { isString, ShapeFlags } from "@vue/shared";
+import { createComponentInstance, setupComponent } from "./component";
 import { getSequence } from "./getSequence";
 import { queueJob } from "./scheduler";
+import { hasPropsChanged, initProps, updateProps } from "./componentProps";
+
 import { Text, createVnode, isSameVnode, Fragment } from "./vnode";
 
 export function createRenderer(renderOptions) {
@@ -267,30 +270,18 @@ export function createRenderer(renderOptions) {
     }
   };
 
-  const mountComponent = (vnode, container, anchor) => {
-    let { data = () => ({}), render } = vnode.type;
-    const state = reactive(data());
-
-    const instance = {
-      //组件的实例
-      state,
-      vnode,
-      subTree: null, //vnode组件的虚拟节点， subTree渲染的组件内容
-      isMounted: false,
-      update: null,
-    };
-
+  const setupRenderEffect = (instance, container, anchor) => {
     const componentUpdateFn = () => {
       //区分是初始化 还是更新
       if (!instance.isMounted) {
         //初始化
-        const subTree = render.call(state); //作为this 后续this 会改
+        const subTree = render.call(instance.data); //作为this 后续this 会改
         patch(null, subTree, container, anchor); //创造了subTree的真实节点并且插入了
         instance.subTree = subTree;
         instance.isMounted = true;
       } else {
         //组件内部更新
-        const subTree = render.call(state);
+        const subTree = render.call(instance.data);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
       }
@@ -304,7 +295,42 @@ export function createRenderer(renderOptions) {
     //调用effect.run可以让组件强制重新渲染
     let update = (instance.update = effect.run.bind(effect));
     update();
+  }
+
+  const mountComponent = (vnode, container, anchor) => {
+
+
+    // 1) 要创造一个组件的实例
+    let instance = vnode.component = createComponentInstance(vnode)
+    //2) 给实例上赋值
+    setupComponent(instance)
+    // 3) 创建一个effect
+    setupRenderEffect(instance, container, anchor)
+    
   };
+
+  const shouldUpdateComponent = (n1, n2) => {
+    const {props:prevProps, children: prevChildren} = n1;
+    const {props:nextProps, children: nextChildren} = n2;
+    if(prevProps === nextProps) return false;
+    if (prevChildren === nextChildren) {
+      return true
+    }
+    return hasPropsChanged(prevProps, nextProps)
+  }
+
+  const updateComponent = (n1, n2) => {
+    //instance.props 是响应式的，而且可以更改，属性的更新会导致页面重新渲染
+    //对于元素而言，复用的是dom节点，复用的是dom节点，对于组件来说复用的实例 
+    const instance = (n2.component = n1.component)
+
+    //需要更新就强制调用组件的update方法
+    if (shouldUpdateComponent(n1, n2)) {
+      instance.next = n2; //将新的虚拟节点放到next属性上
+      instance.update(); //统一调用update方法来更新
+    }
+
+  }
 
   //统一处理组件，里面在区分是普通的还是 函数式组件
   const processComponent = (n1, n2, container, anchor) => {
@@ -312,6 +338,7 @@ export function createRenderer(renderOptions) {
       mountComponent(n2, container, anchor);
     } else {
       //组件更新靠的是props
+      updateComponent(n1, n2)
     }
   };
   /**
