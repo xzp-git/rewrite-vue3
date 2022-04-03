@@ -12,11 +12,11 @@ export function queueJob(job) {
         isFlushing = true
         resolvePromise.then(() => {
             let copy = queue.slice(0)
+            queue.length = 0;
             for (let i = 0; i < copy.length; i++) {
                 let job = copy[i];
                 job()
             }
-            queue.length = 0
             copy.length = 0
         })
     }
