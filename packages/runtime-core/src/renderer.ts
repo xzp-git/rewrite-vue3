@@ -1,5 +1,5 @@
 import { reactive, ReactiveEffect } from "@vue/reactivity";
-import { isNumber, isString, ShapeFlags } from "@vue/shared";
+import { invokeArrayFns, isNumber, isString, ShapeFlags } from "@vue/shared";
 import { createComponentInstance, setupComponent } from "./component";
 import { getSequence } from "./getSequence";
 import { queueJob } from "./scheduler";
@@ -240,6 +240,14 @@ export function createRenderer(renderOptions) {
     }
   };
 
+
+  const patchBlockChildren = (n1, n2) => {
+    for(let i = 0; i < n2.dynamicChildren.length; i++){
+      //树的递归比较 现在是数组的比较
+      patchElement(n1.dynamicChildren[i], n2.dynamicChildren[i])
+    }
+  }
+
   /**
    * 走到这一步代表两个节点是相同的，因为在patch中已经进行过判断了
    * @param n1
@@ -251,7 +259,14 @@ export function createRenderer(renderOptions) {
     let oldProps = n1.props || {};
     let newProps = n2.props || {};
     patchProps(oldProps, newProps, el);
-    patchChildren(n1, n2, el);
+
+    if (n2.dynamicChildren) { //元素之间的优化 靶向更新
+     patchBlockChildren(n1, n2) 
+    }else{
+      patchChildren(n1, n2, el);
+    }
+
+    
   };
   const processElement = (n1, n2, container, anchor) => {
     if (!n1) {
@@ -281,9 +296,16 @@ export function createRenderer(renderOptions) {
     const componentUpdateFn = () => {
       //区分是初始化 还是更新
       if (!instance.isMounted) {
+        let {bm, m} = instance
+        if (bm) {
+          invokeArrayFns(bm)
+        }
         //初始化
         const subTree = render.call(instance.proxy, instance.proxy); //作为this 后续this 会改
         patch(null, subTree, container, anchor); //创造了subTree的真实节点并且插入了
+        if (m) {
+          invokeArrayFns(m)
+        }
         instance.subTree = subTree;
         instance.isMounted = true;
         
@@ -295,9 +317,15 @@ export function createRenderer(renderOptions) {
           //更新前 我也需要拿到最新的属性来进行更新‘
           updateComponentPreRender(instance, next)
         }
+        if (bu) {
+          invokeArrayFns(bu)
+        }
         const subTree = render.call(instance.proxy, instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
+        if (u) {
+          invokeArrayFns(u)
+        }
       }
     };
 

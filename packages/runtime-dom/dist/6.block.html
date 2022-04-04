@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <script src="../../../node_modules/vue/dist/vue.global.js"></script>
+    <!-- <script src="../../../node_modules/@vue/runtime-core/dist//runtime-core.global.js"></script>  -->
+    <!-- <script src="./runtime-dom.global.js"></script> -->
+    <script>
+        let {createRenderer,h,render,Text,Fragment,ref,computed,onBeforeMount,onMounted,onBeforeUpdate,onUpdated,reactive,toRefs,getCurrentInstance, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock,createTextVNode:_createTextVNode,renderList:_renderList} = Vue
+
+
+        // block的作用是收集动态节点
+
+        // block收集动态节点，是以树为单位来收集的。 特点是比较的时候可以只比较动态节点
+
+        // 之前写的h 性能好么？ 和写模板 哪个性能好 （模板缺陷在于，书写不灵活）
+
+        // v-for的时候 如果不增加block， 收集的时候会将v-for的所有节点和其他层的节点一起收集起来 
+
+      
+        const VueComponent = {
+            setup(){
+                const state =  reactive({name:'zf',clazz:'abc',a:'aaa',bbb:'bbb',ccc:'ccc',flag:true})
+                setTimeout(()=>{
+                    state.flag = false
+                },1000)
+                return {
+                    ...toRefs(state),
+                }
+              
+            },
+        render(_ctx){
+                let vnode =   (_openBlock(), _createElementBlock("div", null, [
+                (_openBlock(true), _createElementBlock(Fragment, null, _renderList(3, (item) => {
+                return (_openBlock(), _createElementBlock("div", null, _toDisplayString(_ctx.flag), 1 /* TEXT */))
+                }), 256 /* UNKEYED_FRAGMENT */))
+            ]))
+                console.log(vnode)
+                return vnode
+            }   
+        }
+        render(h(VueComponent),app);
+
+
+
+        // 模板编译优化， 增添了patchFlag 来标识哪些节点是动态的
+        // block 来收集节点， 为不稳定结构的也创建block节点，实现blockTree 做到靶向更新
+        // 优化 （静态提升 属性的提升和虚拟节点的提升，函数的缓存，预解析字符串）
+        // 写模板的性能会比直接写h函数更好一些， （可以手写 openBlock createElementBlock  createTextVnode()  patchFlags作用）
+
+
+        // vue3中的模板编译原理
+    </script>
+</body>
+</html> 

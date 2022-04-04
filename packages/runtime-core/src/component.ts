@@ -1,7 +1,10 @@
-import { reactive } from "@vue/reactivity";
-import { hasOwn, isFunction, ShapeFlags } from "@vue/shared";
+import { proxyRefs, reactive } from "@vue/reactivity";
+import { hasOwn, isFunction, isObject, ShapeFlags } from "@vue/shared";
 import { initProps } from "./componentProps";
 
+export let curretnInstance = null
+export const setCurrentInstance = (instance) => curretnInstance = instance
+export const getCurrentInstance = () => curretnInstance
 
 
 export const createComponentInstance = (vnode) => {
@@ -78,6 +81,33 @@ export const setupComponent = (instance) => {
     if(!isFunction(data)) return console.warn('data options must be a function')
     instance.data = reactive(data.call(instance.proxy))
   }
+
+  let setup = type.setup
+  if (setup) {
+    const setupContext = { //典型的发布订阅模式
+      emit:(event, ...args) => { //事件的实现原理
+        const eventName = `on${event[0].toUpperCase()}${event.slice(1)}`
+        //找到虚拟节点的属性存放props 
+        const handler = instance.vnode.props[eventName]
+        handler && handler(...args)
+      },
+      attrs:instance.attrs,
+      slots:instance.slots
+    }
+    setCurrentInstance(instance)
+    const setupResult = setup(instance.props, setupContext)
+    setCurrentInstance(null)
+
+    if (isFunction(setupResult)) {
+      instance.render = setupResult
+    }else if (isObject(setupResult)) {
+      // 对内部的ref 进行取消.value
+      instance.setupState = proxyRefs(setupResult)
+    }
+  }
+
+
+
   if(!instance.render){
     instance.render = type.render
   }
