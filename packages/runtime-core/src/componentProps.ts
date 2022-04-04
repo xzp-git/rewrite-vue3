@@ -26,12 +26,54 @@ export function initProps(instance, rawProps) {
 }
 
 
+/**
+ * 
+ * @param prevProps 旧虚拟节点的 props
+ * @param nextProps 新虚拟节点的 props
+ * @returns 
+ */
+export const hasPropsChanged = (prevProps = {}, nextProps = {}) => {
+    const nextKeys = Object.keys(nextProps);
+    //对比属性前后的个数是否一致
+    if (nextKeys.length !== Object.keys(prevProps).length) {
+        return true
+    } 
+    //个数一致的话比对 属性的值一样吗
+    for(let i = 0; i<nextKeys.length; i++){
+        const key = nextKeys[i]
+        if (nextProps[key] !== prevProps[key]) {
+            return true
+        }
+    }
 
-export const hasPropsChanged = (prevProps, nextProps) => {
-    
+    return false
 }
 
 
-export function updateProps(){
+export function updateProps(prevProps = {}, nextVnode){
 
+    const props = {};
+
+    const options = nextVnode.type.props || {}
+
+    if (nextVnode.props) {
+        for(let key in nextVnode.props){
+            const value = nextVnode.props[key];
+            if (hasOwn(options, key)) {
+                props[key] = value
+            }
+        }
+    }
+
+    //看一下属性有没有变化
+    //值得变化
+    for(const key in props){
+        prevProps[key] = props[key];
+    }
+
+    for(const key in prevProps){
+        if (!hasOwn(props, key)) {
+            delete prevProps[key]
+        }
+    }
 }

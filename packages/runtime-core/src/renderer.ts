@@ -1,9 +1,9 @@
 import { reactive, ReactiveEffect } from "@vue/reactivity";
-import { isString, ShapeFlags } from "@vue/shared";
+import { isNumber, isString, ShapeFlags } from "@vue/shared";
 import { createComponentInstance, setupComponent } from "./component";
 import { getSequence } from "./getSequence";
 import { queueJob } from "./scheduler";
-import { hasPropsChanged, initProps, updateProps } from "./componentProps";
+import { hasPropsChanged, updateProps } from "./componentProps";
 
 import { Text, createVnode, isSameVnode, Fragment } from "./vnode";
 
@@ -41,7 +41,7 @@ export function createRenderer(renderOptions) {
 
   const normalize = (children, i) => {
     let child = children[i];
-    if (isString(child)) {
+    if (isString(child) || isNumber(child)) {
       let vnode = createVnode(Text, null, child);
       children[i] = vnode;
     }
@@ -269,19 +269,33 @@ export function createRenderer(renderOptions) {
       patchChildren(n1, n2, container);
     }
   };
-
+  const updateComponentPreRender = (instance, next) => {
+    instance.next = null //next 清空
+    instance.vnode = next //实例上最新的虚拟节点
+    updateProps(instance.props, next)
+    console.log(instance);
+    
+  }
   const setupRenderEffect = (instance, container, anchor) => {
+    const {render} = instance;
     const componentUpdateFn = () => {
       //区分是初始化 还是更新
       if (!instance.isMounted) {
         //初始化
-        const subTree = render.call(instance.data); //作为this 后续this 会改
+        const subTree = render.call(instance.proxy, instance.proxy); //作为this 后续this 会改
         patch(null, subTree, container, anchor); //创造了subTree的真实节点并且插入了
         instance.subTree = subTree;
         instance.isMounted = true;
+        
       } else {
         //组件内部更新
-        const subTree = render.call(instance.data);
+
+        let {next, bu, u} = instance
+        if (next) {
+          //更新前 我也需要拿到最新的属性来进行更新‘
+          updateComponentPreRender(instance, next)
+        }
+        const subTree = render.call(instance.proxy, instance.proxy);
         patch(instance.subTree, subTree, container, anchor);
         instance.subTree = subTree;
       }
@@ -293,7 +307,7 @@ export function createRenderer(renderOptions) {
     );
     //我们将组件强制更新的逻辑保存到了组件的实例上，后续可以使用
     //调用effect.run可以让组件强制重新渲染
-    let update = (instance.update = effect.run.bind(effect));
+    let update = instance.update = effect.run.bind(effect);
     update();
   }
 
@@ -307,19 +321,22 @@ export function createRenderer(renderOptions) {
     // 3) 创建一个effect
     setupRenderEffect(instance, container, anchor)
     
+
+    
   };
 
   const shouldUpdateComponent = (n1, n2) => {
     const {props:prevProps, children: prevChildren} = n1;
     const {props:nextProps, children: nextChildren} = n2;
     if(prevProps === nextProps) return false;
-    if (prevChildren === nextChildren) {
+    if (prevChildren || nextChildren) {
       return true
     }
     return hasPropsChanged(prevProps, nextProps)
   }
 
   const updateComponent = (n1, n2) => {
+    
     //instance.props 是响应式的，而且可以更改，属性的更新会导致页面重新渲染
     //对于元素而言，复用的是dom节点，复用的是dom节点，对于组件来说复用的实例 
     const instance = (n2.component = n1.component)

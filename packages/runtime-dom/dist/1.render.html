@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <!-- <script src="../../../node_modules/@vue/runtime-core/dist//runtime-core.global.js"></script>  -->
+    <script src="./runtime-dom.global.js"></script>
+    <script>
+        let {createRenderer,h,render,Text,Fragment} = VueRuntimeDOM
+        // webComponent
+        // 组件的三大特性，1）属性, 属性变化组件如何更新 2) 插槽 3）事件  
+        // vue setup函数 （compositionAPI的入口）  组件的生命周期
+        const VueComponent  = { 
+            props:{
+                address:String, // 校验属性类型
+                c:{}
+            },
+            render(){
+                return h('p',[this.address , this.$attrs.a , this.$attrs.b , this.c.n])
+            }
+        }
+        // vue props(用户接收的) attrs(用户没有接收的)
+        render(h(VueComponent,{address:'霍营地铁',a:1,b:2,c:{n:1}}),app);
+
+        // 组件是单向数据流的，不能改变属性
+    </script>
+</body>
+</html>
