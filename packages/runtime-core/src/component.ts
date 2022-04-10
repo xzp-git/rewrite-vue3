@@ -7,10 +7,12 @@ export const setCurrentInstance = (instance) => curretnInstance = instance
 export const getCurrentInstance = () => curretnInstance
 
 
-export const createComponentInstance = (vnode) => {
+export const createComponentInstance = (vnode, parent) => {
     
 
     const instance = {
+      parent,
+      provides: parent ? parent.provides : Object.create(null), // 所有的组件用的都是父亲的provides 
       //组件的实例
       data:null,
       vnode,
@@ -110,5 +112,15 @@ export const setupComponent = (instance) => {
 
   if(!instance.render){
     instance.render = type.render
+  }
+}
+
+export function renderComponent(instance){
+  let {vnode,render,props} = instance;
+
+  if(vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT){
+      return render.call(instance.proxy,instance.proxy)
+  }else{
+      return vnode.type(props); // 函数式组件
   }
 }

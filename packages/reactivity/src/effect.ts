@@ -1,3 +1,5 @@
+import { recordEffectScope } from "./effectScope";
+
 export let activeEffect = undefined;
 
 function cleanupEffect(effect) {
@@ -14,7 +16,9 @@ export class ReactiveEffect {
   public deps = [];
   public active = true; //这个effect默认是激活状态
 
-  constructor(public fn, public scheduler) {}
+  constructor(public fn, public scheduler) {
+    recordEffectScope(this)
+  }
 
   run() {
     // run 就是执行effect中传入的fn
