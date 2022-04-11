@@ -1,4 +1,5 @@
 import { reactive } from "@vue/reactivity";
+import { ShapeFlags } from "@vue/shared";
 import { hasOwn } from "@vue/shared";
 
 
@@ -23,6 +24,9 @@ export function initProps(instance, rawProps) {
     //用的应该是shallowReactive
     instance.props = reactive(props)
     instance.attrs = attrs
+    if(instance.vnode.shapeFlag & ShapeFlags.FUNCTIONAL_COMPONENT){
+        instance.props = instance.attrs;
+    }
 }
 
 

@@ -435,6 +435,13 @@ export function createRenderer(renderOptions) {
     }
   };
   const unmount = (vnode,parentComponent) => {
+    if(vnode.type == Fragment){ // fragment删除的时候 要清空儿子 不是删除真实dom
+        return unmountChildren(vnode,parentComponent)
+    }else if(vnode.shapeFlag & ShapeFlags.COMPONENT_SHOULD_KEEP_ALIVE){
+        return parentComponent.ctx.deactivate(vnode); // 直接把虚拟节点传递给你
+    }else if(vnode.shapeFlag & ShapeFlags.COMPONENT){
+        return unmount(vnode.component.subTree,null)
+    }
     hostRemove(vnode.el);
   };
   //vnode 虚拟dom
