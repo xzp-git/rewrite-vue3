@@ -6,6 +6,7 @@ import { queueJob } from "./scheduler";
 import { hasPropsChanged, updateProps } from "./componentProps";
 
 import { Text, createVnode, isSameVnode, Fragment } from "./vnode";
+import { isKeepAlive } from "./components/KeepAlive";
 
 export function createRenderer(renderOptions) {
   let {
@@ -297,8 +298,7 @@ export function createRenderer(renderOptions) {
     instance.next = null //next 清空
     instance.vnode = next //实例上最新的虚拟节点
     updateProps(instance.props, next)
-    console.log(instance);
-    
+    Object.assign(instance.slots,next.children)  // 更新插槽
   }
   const setupRenderEffect = (instance, container, anchor) => {
     const {render, vnode} = instance;
@@ -354,6 +354,17 @@ export function createRenderer(renderOptions) {
 
     // 1) 要创造一个组件的实例
     let instance = vnode.component = createComponentInstance(vnode,parentComponent)
+   
+    if(isKeepAlive(vnode)){
+      ( instance.ctx as any).renderer = {
+           createElement:hostCreateElement, // 创建元素用这个方法
+           move(vnode,container){ // move的vnode肯定是组件
+               hostInsert(vnode.component.subTree.el,container)
+           }
+       }
+   }
+   
+   
     //2) 给实例上赋值
     setupComponent(instance)
     // 3) 创建一个effect
@@ -390,7 +401,11 @@ export function createRenderer(renderOptions) {
   //统一处理组件，里面在区分是普通的还是 函数式组件
   const processComponent = (n1, n2, container, anchor,parentComponent) => {
     if (n1 == null) {
-      mountComponent(n2, container, anchor,parentComponent);
+      if(n2.shapeFlag & ShapeFlags.COMPONENT_KEPT_ALIVE){
+          parentComponent.ctx.activate(n2,container,anchor)
+      }else{
+          mountComponent(n2,container,anchor,parentComponent);
+      }
     } else {
       //组件更新靠的是props
       updateComponent(n1, n2)

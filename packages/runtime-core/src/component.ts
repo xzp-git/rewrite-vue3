@@ -11,6 +11,7 @@ export const createComponentInstance = (vnode, parent) => {
     
 
     const instance = {
+      ctx:{}, // 实例的上下文
       parent,
       provides: parent ? parent.provides : Object.create(null), // 所有的组件用的都是父亲的provides 
       //组件的实例

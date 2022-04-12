@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app"></div>
+    <div id="root"></div>
+    <div id="abc"></div>
+    <!-- <script src="../../../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script> -->
+    <!-- <script src="../../../node_modules/@vue/runtime-core/dist//runtime-core.global.js"></script>  -->
+    <script src="./runtime-dom.global.js"></script>
+    <script>
+        let {createRenderer,h,render,Text,Fragment,ref,computed,onBeforeMount,onMounted,onBeforeUpdate,onUpdated,reactive,toRefs,getCurrentInstance, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock,provide,inject,Teleport,defineAsyncComponent,KeepAlive} = VueRuntimeDOM
+        // component :is=""
+        // 路由切换 router-view   缓存的功能，没有其他的特殊含义
+        // 这里keep-alive他的整个实现原理的比较简单 （1） 如何缓存的 缓存的就是虚拟dom，真实dom）
+        const My3 = {
+            setup(){
+                onMounted(()=>{
+                    console.log('my3 mounted')
+                })
+            },
+            render:()=>{
+                return h('h1','my3')}
+        }
+        const My1 = {
+            setup(){
+                onMounted(()=>{
+                    console.log('my1 mounted')
+                })
+            },
+            render:()=>{
+                return h('h1','my1')}
+        }
+        const My2 = {
+            setup(){
+                onMounted(()=>{
+                    console.log('my2 mounted')
+                })
+            },
+            render:()=>h('h1','my2')
+        }
+        render(h(KeepAlive,{},{
+            default:()=>h(My1)
+        }),app);
+        setTimeout(()=>{
+            render(h(KeepAlive,{},{
+                default:()=>h(My2)
+            }),app);
+        },1000)
+        setTimeout(()=>{
+            render(h(KeepAlive,{},{
+                default:()=>h(My3)
+            }),app);
+        },2000)
+        
+        setTimeout(()=>{
+            render(h(KeepAlive,{},{
+                default:()=>h(My1)
+            }),app);
+        },3000)
+
+        setTimeout(()=>{
+            render(h(KeepAlive,{},{
+                default:()=>h(My3)
+            }),app);
+        },4000)
+        //   my1  -> my3
+        // my2 -> my3   LRU算法
+    </script>
+</body>
